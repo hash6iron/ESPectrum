@@ -452,6 +452,13 @@ unsigned short OSD::menuRun(string new_menu, const string& statusbar, int (*proc
                     if (menu_level!=0) OSD::restoreBackbufferData(true);
                     click();
                     return 0;
+                } else if (Menukey.vk == fabgl::VK_F11)
+                {
+                    // ROM reset although Menu kept opened.
+                    if (menu_level!=0) OSD::restoreBackbufferData(true);
+                    click();
+                    ESPectrum::reset();
+                    return 0;
                 }
             }
         }
