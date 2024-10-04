@@ -309,7 +309,7 @@ unsigned short OSD::menuRun(string new_menu, const string& statusbar, int (*proc
         y += 8;
         prev_y[0] = 0;
     } else {
-        x += (Config::aspect_16_9 ? 24 : 8) + (60 * menu_level);
+        x += (Config::aspect_16_9 ? 24 : 8) + (54 /*60*/ * menu_level);
         if (menu_saverect && !prev_y[menu_level]) {
             y += (4 + (OSD_FONT_H * menu_prevopt));
             prev_y[menu_level] = y;
@@ -906,7 +906,7 @@ int OSD::menuTape(string title) {
                     }
                 } else if (Menukey.vk == fabgl::VK_DOWN || Menukey.vk == fabgl::VK_JOY1DOWN || Menukey.vk == fabgl::VK_JOY2DOWN) {
                     if (focus == virtual_rows - 1 - ( Tape::tapeFileType == TAPE_FTYPE_TAP ? 1 : 0 ) ) {
-                        if ((begin_row + virtual_rows - 1 - ( Tape::tapeFileType == TAPE_FTYPE_TAP ? !Tape::tapeIsReadOnly ? 2 : 1 : 0 )) < real_rows) {
+                        if ((begin_row + virtual_rows - 1 - ( Tape::tapeFileType == TAPE_FTYPE_TAP ? (!Tape::tapeIsReadOnly ? 2 : 1) : 0 )) < real_rows) {
                             last_begin_row = begin_row;
                             begin_row++;
                             tapemenuRedraw(title);
@@ -948,7 +948,7 @@ int OSD::menuTape(string title) {
                         last_focus = focus;
                         last_begin_row = begin_row;
                         focus = virtual_rows - 1 - ( Tape::tapeFileType == TAPE_FTYPE_TAP ? 1 : 0 );
-                        begin_row = real_rows - virtual_rows + 1 + ( Tape::tapeFileType == TAPE_FTYPE_TAP ? !Tape::tapeIsReadOnly ? 2 : 1 : 0 );
+                        begin_row = real_rows - virtual_rows + 1 + ( Tape::tapeFileType == TAPE_FTYPE_TAP ? (!Tape::tapeIsReadOnly ? 2 : 1) : 0 );
                         tapemenuRedraw(title);
                         click();
                     }
@@ -963,7 +963,7 @@ int OSD::menuTape(string title) {
                     last_focus = focus;
                     last_begin_row = begin_row;
                     focus = virtual_rows - 1 - ( Tape::tapeFileType == TAPE_FTYPE_TAP ? 1 : 0 );
-                    begin_row = real_rows - virtual_rows + 1 + ( Tape::tapeFileType == TAPE_FTYPE_TAP ? !Tape::tapeIsReadOnly ? 2 : 1 : 0 );
+                    begin_row = real_rows - virtual_rows + 1 + ( Tape::tapeFileType == TAPE_FTYPE_TAP ? (!Tape::tapeIsReadOnly ? 2 : 1) : 0 );
                     tapemenuRedraw(title);
                     click();
                 } else if (Tape::tapeFileType == TAPE_FTYPE_TAP && !Tape::tapeIsReadOnly && (Menukey.vk == fabgl::VK_SPACE || Menukey.vk == fabgl::VK_JOY1C || Menukey.vk == fabgl::VK_JOY2C)) {
@@ -989,16 +989,14 @@ int OSD::menuTape(string title) {
 
                     long current_pos = ftell( Tape::tape );
 
-                    TapeBlock::BlockType blocktype = Tape::getBlockType(begin_row - 2 + focus);
-                    switch( blocktype ) {
+                    int blocknum = begin_row - 2 + focus;
+                    TapeBlock::BlockType blocktype = Tape::getBlockType(blocknum);
+                    switch( Tape::getBlockType(begin_row - 2 + focus) ) {
                         case TapeBlock::Program_header:
                         case TapeBlock::Number_array_header:
                         case TapeBlock::Character_array_header:
                         case TapeBlock::Code_header: {
-
-                            string current_name = rtrim_copy(rowGet( menu, menuRealRowFor( focus ) ).substr(18,10));
-
-                            string new_name = input(19, focus, "", 10, 10, zxColor(0,0), zxColor(7,0), current_name);
+                            string new_name = input(19, focus, "", 10, 10, zxColor(0,0), zxColor(7,0), Tape::getBlockName(blocknum));
                             if ( new_name != "" ) {
                                 Tape::renameBlock( begin_row - 2 + focus, new_name );
                             }

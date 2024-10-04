@@ -162,9 +162,7 @@ public:
     static uint32_t tapebufByteCount;
     static uint32_t tapePlayOffset;
     static size_t tapeFileSize;
-
     static bool tapeIsReadOnly;
-
     static uint8_t tapePhase;
 
     static std::vector<TapeBlock> TapeListing;
@@ -192,6 +190,7 @@ public:
     static bool isSelectedBlock(int block);
     static void removeSelectedBlocks();
     static void moveSelectedBlocks(int targetPosition);
+    static string getBlockName(int block);
     static void renameBlock(int block, string new_name);
 
     static double tapeCompensation;

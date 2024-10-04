@@ -164,8 +164,8 @@ string OSD::fileDialog(string &fdir, string title, uint8_t ftype, uint8_t mfcols
         x += (Config::aspect_16_9 ? 24 : 4);
         y += (Config::aspect_16_9 ? 4 : 8);
     } else {
-        x += (Config::aspect_16_9 ? 24 : 4) + (60 * menu_level);
-        y += (Config::aspect_16_9 ? 4 : 8) + (8 * (menu_level - 1));
+        x += (Config::aspect_16_9 ? 24 : 4) + (48 /*60*/ * menu_level);
+        y += (Config::aspect_16_9 ? 4 : 8) + (4 /*8*/ * (menu_level - 1));
     }
 
     // Size
@@ -672,11 +672,9 @@ reset:
                         click();
 
                         filedir = rowGet(menu,FileUtils::fileTypes[ftype].focus);
-                        // printf("%s\n",filedir.c_str());
 
-                        if ( filedir[0] != ASCII_SPC ) {
+                        if (filedir[0] != ASCII_SPC) {
                             rtrim(filedir);
-
                             if ( !access(( FileUtils::MountPoint + fdir + filedir ).c_str(), W_OK) ) {
                                 string title = MENU_DELETE_CURRENT_FILE[Config::lang];
                                 string msg = OSD_DLG_SURE[Config::lang];
@@ -719,7 +717,7 @@ reset:
                             // printf("Focus: %d, Lastfocus: %d\n",FileUtils::fileTypes[ftype].focus,(int) last_focus);
                         }
                         click();
-                    } else if (Menukey.vk == fabgl::VK_PAGEUP || ((Menukey.vk == fabgl::VK_LEFT) && (Config::osd_LRNav == 0)) || Menukey.vk == fabgl::VK_JOY1LEFT || Menukey.vk == fabgl::VK_JOY2LEFT) {
+                    } else if (Menukey.vk == fabgl::VK_PAGEUP || (Menukey.vk == fabgl::VK_LEFT && Config::osd_LRNav == 0) || Menukey.vk == fabgl::VK_JOY1LEFT || Menukey.vk == fabgl::VK_JOY2LEFT) {
                         if (FileUtils::fileTypes[ftype].begin_row > virtual_rows) {
                             FileUtils::fileTypes[ftype].focus = 2;
                             FileUtils::fileTypes[ftype].begin_row -= virtual_rows - 2;
@@ -729,7 +727,7 @@ reset:
                         }
                         fd_Redraw(title, fdir, ftype);
                         click();
-                    } else if (Menukey.vk == fabgl::VK_PAGEDOWN || ((Menukey.vk == fabgl::VK_RIGHT) && (Config::osd_LRNav == 0)) || Menukey.vk == fabgl::VK_JOY1RIGHT || Menukey.vk == fabgl::VK_JOY2RIGHT) {
+                    } else if (Menukey.vk == fabgl::VK_PAGEDOWN || (Menukey.vk == fabgl::VK_RIGHT && Config::osd_LRNav == 0) || Menukey.vk == fabgl::VK_JOY1RIGHT || Menukey.vk == fabgl::VK_JOY2RIGHT) {
                         if (real_rows - FileUtils::fileTypes[ftype].begin_row  - virtual_rows > virtual_rows) {
                             FileUtils::fileTypes[ftype].focus = 2;
                             FileUtils::fileTypes[ftype].begin_row += virtual_rows - 2;
@@ -754,16 +752,15 @@ reset:
                         // printf("Focus: %d, Lastfocus: %d\n",FileUtils::fileTypes[ftype].focus,(int) last_focus);
                         fd_Redraw(title, fdir, ftype);
                         click();
-                    } else if (Menukey.vk == fabgl::VK_BACKSPACE) {
-                        if (FileUtils::fileTypes[ftype].fdMode) {
+                    } else if (Menukey.vk == fabgl::VK_BACKSPACE || (Menukey.vk == fabgl::VK_LEFT && Config::osd_LRNav == 1)) {
+                        if (FileUtils::fileTypes[ftype].fdMode && Menukey.vk == fabgl::VK_BACKSPACE) {
                             if (FileUtils::fileTypes[ftype].fileSearch.length()) {
                                 FileUtils::fileTypes[ftype].fileSearch.pop_back();
                                 fdSearchRefresh = true;
                                 click();
                             }
                         } else {
-                            if (fdir != "/") {
-
+                            if (fdir != "/") { // if non root directory goto previous directory
                                 fclose(dirfile);
                                 dirfile = NULL;
 
@@ -777,14 +774,30 @@ reset:
 
                                 break;
 
+                            } else if ( menu_level > 0 ) { // exit directly if non-menu fileDialog
+                                OSD::restoreBackbufferData();
+
+                                fclose(dirfile);
+                                dirfile = NULL;
+
+                                click();
+                                return "";
                             }
+
                         }
-                    } else if (Menukey.vk == fabgl::VK_RETURN || ((Menukey.vk == fabgl::VK_RIGHT) && (Config::osd_LRNav == 1)) || Menukey.vk == fabgl::VK_JOY1B || Menukey.vk == fabgl::VK_JOY2B || Menukey.vk == fabgl::VK_JOY1C || Menukey.vk == fabgl::VK_JOY2C) {
+
+                    } else if (Menukey.vk == fabgl::VK_RETURN
+                            || Menukey.vk == fabgl::VK_JOY1B
+                            || Menukey.vk == fabgl::VK_JOY2B
+                            || Menukey.vk == fabgl::VK_JOY1C
+                            || Menukey.vk == fabgl::VK_JOY2C
+                            || (Menukey.vk == fabgl::VK_RIGHT && Config::osd_LRNav == 1 && trim_copy(rowGet(menu,FileUtils::fileTypes[ftype].focus)) != "..")) {
 
                         fclose(dirfile);
                         dirfile = NULL;
 
                         filedir = rowGet(menu,FileUtils::fileTypes[ftype].focus);
+
                         // printf("%s\n",filedir.c_str());
                         if (filedir[0] == ASCII_SPC) {
                             if (filedir[1] == ASCII_SPC) {
@@ -814,20 +827,7 @@ reset:
 
                         }
 
-                    } else if ((Menukey.vk == fabgl::VK_LEFT) && (Config::osd_LRNav == 1) && fdir != "/"){
-                        // When press LEFT go to the previous dir
-                        fclose(dirfile);
-                        dirfile = NULL;
-                        filedir = rowGet(menu,FileUtils::fileTypes[ftype].focus);
-                        if (fdir != "/") {
-                            fdir.pop_back();
-                            fdir = fdir.substr(0,fdir.find_last_of("/") + 1);      
-                            FileUtils::fileTypes[ftype].begin_row = FileUtils::fileTypes[ftype].focus = 2;
-                            break; 
-                        }
-                        // printf("Fdir: %s\n",fdir.c_str());
-
-                    } else if (Menukey.vk == fabgl::VK_ESCAPE || ((Menukey.vk == fabgl::VK_LEFT) && (Config::osd_LRNav == 1) && fdir == "/") || Menukey.vk == fabgl::VK_JOY1A || Menukey.vk == fabgl::VK_JOY2A) {
+                    } else if (Menukey.vk == fabgl::VK_ESCAPE || Menukey.vk == fabgl::VK_JOY1A || Menukey.vk == fabgl::VK_JOY2A) {
 
                         OSD::restoreBackbufferData();
 
@@ -865,6 +865,7 @@ reset:
                                                          "Proc:"
                                     );
                     VIDEO::vga.print( FileUtils::fileTypes[ftype].fileSearch.size() > MAXSEARCHLEN ? FileUtils::fileTypes[ftype].fileSearch.substr( FileUtils::fileTypes[ftype].fileSearch.size() - MAXSEARCHLEN).c_str() : FileUtils::fileTypes[ftype].fileSearch.c_str());
+
                     if (fdCursorFlash > 63) {
                         VIDEO::vga.setTextColor(zxColor(5, 0), zxColor(7, 1));
                         if (fdCursorFlash == 128) fdCursorFlash = 0;

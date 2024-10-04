@@ -238,43 +238,47 @@ void Tape::LoadTape(string mFile) {
         string keySel = mFile.substr(0,1);
         mFile.erase(0, 1);
 
-        if ( FileUtils::fileSize( ( FileUtils::MountPoint + FileUtils::TAP_Path + mFile ).c_str() ) > 0 ) {
-            // Flashload .tap if needed
-            if ((keySel ==  "R") && (Config::flashload) && (Config::romSet != "ZX81+") && (Config::romSet != "48Kcs") && (Config::romSet != "128Kcs") && (Config::romSet != "TKcs")) {
+        // Flashload .tap if needed
+        if (FileUtils::fileSize( ( FileUtils::MountPoint + FileUtils::TAP_Path + mFile ).c_str() ) > 0
+            && keySel ==  "R"
+            && Config::flashload
+            && Config::romSet != "ZX81+"
+            && Config::romSet != "48Kcs"
+            && Config::romSet != "128Kcs"
+            && Config::romSet != "TKcs") {
 
-                OSD::osdCenteredMsg(OSD_TAPE_FLASHLOAD[Config::lang], LEVEL_INFO, 0);
+            OSD::osdCenteredMsg(OSD_TAPE_FLASHLOAD[Config::lang], LEVEL_INFO, 0);
 
-                uint8_t OSDprev = VIDEO::OSD;
+            uint8_t OSDprev = VIDEO::OSD;
 
-                if (Z80Ops::is48)
-                    FileZ80::loader48();
-                else
-                    FileZ80::loader128();
+            if (Z80Ops::is48)
+                FileZ80::loader48();
+            else
+                FileZ80::loader128();
 
-                // Put something random on FRAMES SYS VAR as recommended by Mark Woodmass
-                // https://skoolkid.github.io/rom/asm/5C78.html
-                MemESP::writebyte(0x5C78,rand() % 256);
-                MemESP::writebyte(0x5C79,rand() % 256);
+            // Put something random on FRAMES SYS VAR as recommended by Mark Woodmass
+            // https://skoolkid.github.io/rom/asm/5C78.html
+            MemESP::writebyte(0x5C78,rand() % 256);
+            MemESP::writebyte(0x5C79,rand() % 256);
 
-                if (Config::ram_file != NO_RAM_FILE) {
-                    Config::ram_file = NO_RAM_FILE;
-                }
-                Config::last_ram_file = NO_RAM_FILE;
-
-                if (OSDprev) {
-                    VIDEO::OSD = OSDprev;
-                    if (Config::aspect_16_9)
-                        VIDEO::Draw_OSD169 = VIDEO::MainScreen_OSD;
-                    else
-                        VIDEO::Draw_OSD43  = Z80Ops::isPentagon ? VIDEO::BottomBorder_OSD_Pentagon : VIDEO::BottomBorder_OSD;
-                    ESPectrum::TapeNameScroller = 0;
-                }
-
-            } else {
-
-                OSD::osdCenteredMsg(OSD_TAPE_INSERT[Config::lang], LEVEL_INFO);
-
+            if (Config::ram_file != NO_RAM_FILE) {
+                Config::ram_file = NO_RAM_FILE;
             }
+            Config::last_ram_file = NO_RAM_FILE;
+
+            if (OSDprev) {
+                VIDEO::OSD = OSDprev;
+                if (Config::aspect_16_9)
+                    VIDEO::Draw_OSD169 = VIDEO::MainScreen_OSD;
+                else
+                    VIDEO::Draw_OSD43  = Z80Ops::isPentagon ? VIDEO::BottomBorder_OSD_Pentagon : VIDEO::BottomBorder_OSD;
+                ESPectrum::TapeNameScroller = 0;
+            }
+
+        } else {
+
+            OSD::osdCenteredMsg(OSD_TAPE_INSERT[Config::lang], LEVEL_INFO);
+
         }
 
         Tape::Stop();
@@ -383,7 +387,6 @@ void Tape::TAP_Open(string name) {
     fseek(tape,0,SEEK_END);
     tapeFileSize = ftell(tape);
     rewind(tape);
-//    if (tapeFileSize == 0) return;
 
     tapeSaveName = fname;
     tapeFileName = name;
@@ -532,7 +535,7 @@ string Tape::tapeBlockReadData(int Blocknum) {
     int tapeBlkLen=0;
     string blktype;
     char buf[52];
-    char fname[10];
+    char fname[11];
 
     tapeContentIndex = Tape::CalcTapBlockPos(Blocknum);
 
@@ -1564,7 +1567,27 @@ void Tape::moveSelectedBlocks(int targetPosition) {
     selectedBlocks.clear();
 }
 
+string Tape::getBlockName(int block) {
+
+    TapeBlock::BlockType blocktype = getBlockType(block);
+
+    if (blocktype <= TapeBlock::Code_header) {
+        // Read header name
+        char fname[11] = { 0 };
+        long blockNameOff = CalcTapBlockPos(block) + 4; // size + flag + blocktype
+        fseek( tape, blockNameOff, SEEK_SET );
+        fread( fname, 1, 10, tape );
+        string ret = (char *) fname;
+        rtrim(ret);
+        return ret;
+    }
+
+    return "";
+
+}
+
 void Tape::renameBlock(int block, string new_name) {
+
     char fname[11];
     uint8_t header[18]; // header + checksum (without encoded block len and flag)
 
@@ -1574,6 +1597,7 @@ void Tape::renameBlock(int block, string new_name) {
         case TapeBlock::Number_array_header:
         case TapeBlock::Character_array_header:
         case TapeBlock::Code_header: {
+
             long blockNameOff = CalcTapBlockPos(block) + 3; // size + flag
 
             // Read header
