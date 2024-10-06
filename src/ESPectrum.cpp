@@ -1427,7 +1427,13 @@ IRAM_ATTR void ESPectrum::processKeyboard() {
             bitWrite(PS2cols[5], 3, (!Kbd->isVKDown(fabgl::VK_U)) & (!Kbd->isVKDown(fabgl::VK_u)));
             bitWrite(PS2cols[5], 4, (!Kbd->isVKDown(fabgl::VK_Y)) & (!Kbd->isVKDown(fabgl::VK_y)));
 
-            bitWrite(PS2cols[6], 0, !Kbd->isVKDown(fabgl::VK_RETURN));
+            //For K-1000 ENTER 3D key simulation
+            bitWrite(PS2cols[6], 0, !Kbd->isVKDown(fabgl::VK_RETURN) 
+                                &   !Kbd->isVKDown(fabgl::VK_BACKSLASH));
+            
+            
+            
+
             bitWrite(PS2cols[6], 1, (!Kbd->isVKDown(fabgl::VK_L)) & (!Kbd->isVKDown(fabgl::VK_l)));
             bitWrite(PS2cols[6], 2, (!Kbd->isVKDown(fabgl::VK_K)) & (!Kbd->isVKDown(fabgl::VK_k)));
             bitWrite(PS2cols[6], 3, (!Kbd->isVKDown(fabgl::VK_J)) & (!Kbd->isVKDown(fabgl::VK_j)));
