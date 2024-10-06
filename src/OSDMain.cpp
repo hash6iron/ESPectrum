@@ -48,6 +48,7 @@ visit https://zxespectrum.speccy.org/contacto
 #include "pwm_audio.h"
 #include "Z80_JLS/z80.h"
 #include "roms.h"
+#include "BuildDate.h"
 
 #include "esp_system.h"
 #include "esp_ota_ops.h"
@@ -224,8 +225,14 @@ void OSD::drawOSD(bool bottom_info) {
             case 1: bottom_line = Config::arch[0] == 'T' && Config::ALUTK == 2 ? " Video mode: VGA 60hz       " : " Video mode: VGA 50hz       "; break;
             case 2: bottom_line = Config::arch[0] == 'T' && Config::ALUTK == 2 ? " Video mode: CRT 60hz       " : " Video mode: CRT 50hz       "; break;
         }
-        VIDEO::vga.print(bottom_line.append(EMU_VERSION).c_str());
-    } else VIDEO::vga.print(OSD_BOTTOM);
+
+//        VIDEO::vga.print(bottom_line.append(EMU_VERSION).c_str()); // Original
+
+        VIDEO::vga.print(bottom_line.append(string(getShortBuildDate())+"c ").c_str()); // For Canary
+    } else {
+        VIDEO::vga.print(OSD_BOTTOM);
+        VIDEO::vga.print((string(getShortBuildDate())+"c ").c_str()); // For Canary
+    }
     osdHome();
 }
 
@@ -491,8 +498,8 @@ void OSD::drawStats() {
 
 }
 
-static bool persistSave(uint8_t slotnumber)
-{
+static bool persistSave(uint8_t slotnumber) {
+
     struct stat stat_buf;
     char persistfname[sizeof(DISK_PSNA_FILE) + 7];
     char persistfinfo[sizeof(DISK_PSNA_FILE) + 7];
@@ -546,9 +553,7 @@ static bool persistSave(uint8_t slotnumber)
 
 }
 
-static bool persistLoad(uint8_t slotnumber)
-{
-
+static bool persistLoad(uint8_t slotnumber) {
     char persistfname[sizeof(DISK_PSNA_FILE) + 7];
     char persistfinfo[sizeof(DISK_PSNA_FILE) + 7];
 
@@ -862,6 +867,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, bool CTRL, bool SHIFT) {
                 osdCenteredMsg(OSD_TAPE_EJECT[Config::lang], LEVEL_INFO, 1000);
             }
         }
+
     } else if (CTRL && !SHIFT) {
 
         // if (KeytoESP == fabgl::VK_F11) { // Toggle snow effect
@@ -1110,7 +1116,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, bool CTRL, bool SHIFT) {
                 string statusbar = Config::lang == 0 ? " F2 Rename | F8 Delete" :
                                    Config::lang == 1 ? " F2 Renombrar | F8 Borrar" :
                                                        " F2 Renomear | F8 Excluir";
-                statusbar += std::string(28 - statusbar.size(), ' ');
+                statusbar += std::string(26 - statusbar.size(), ' ');
                 uint8_t opt2 = menuRun(menuload, statusbar, menuProcessSnapshot);
                 if (opt2 && FileUtils::isSDReady()) {
                     if ( FileUtils::isSDReady() ) persistLoad(opt2);
@@ -1119,6 +1125,24 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, bool CTRL, bool SHIFT) {
             }
         }
         else if (KeytoESP == fabgl::VK_F4) {
+
+            // menu_level = 0;
+            // menu_saverect = false;
+
+            // if (FileUtils::isSDReady()) {
+            //     string mFile = fileDialog(FileUtils::ESP_Path, MENU_ESP_SAVE_TITLE[Config::lang],DISK_ESPFILE,51,22);
+            //     if (mFile != "") {
+            //         // string fprefix = mFile.substr(0,1);
+            //         // if (fprefix == "S") FileZ80::keepArch = true;
+            //         // mFile.erase(0, 1);
+            //         // string fname = FileUtils::MountPoint + FileUtils::SNA_Path + "/" + mFile;
+            //         // LoadSnapshot(fname,"","",0xff);
+            //         // Config::ram_file = fname;
+            //         // Config::last_ram_file = fname;
+            //     }
+            // }
+            // // if (VIDEO::OSD) OSD::drawStats(); // Redraw stats for 16:9 modes
+
             // Persist Save
             string menusave = MENU_PERSIST_SAVE[Config::lang] + getStringPersistCatalog();
             menu_level = 0;
@@ -1129,7 +1153,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, bool CTRL, bool SHIFT) {
                 string statusbar = Config::lang == 0 ? " F2 Rename | F8 Delete" :
                                    Config::lang == 1 ? " F2 Renombrar | F8 Borrar" :
                                                        " F2 Renomear | F8 Excluir";
-                statusbar += std::string(28 - statusbar.size(), ' ');
+                statusbar += std::string(26 - statusbar.size(), ' ');
                 uint8_t opt2 = menuRun(menusave, statusbar, menuProcessSnapshotSave);
                 if (opt2) {
                     if ( FileUtils::isSDReady() ) if (persistSave(opt2)) return;
@@ -1262,7 +1286,8 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, bool CTRL, bool SHIFT) {
             click();
 
         }
-        else if (KeytoESP == fabgl::VK_F9 || KeytoESP == fabgl::VK_VOLUMEDOWN) {
+        else if (KeytoESP == fabgl::VK_F9 || KeytoESP == fabgl::VK_VOLUMEDOWN ||
+                 KeytoESP == fabgl::VK_F10 || KeytoESP == fabgl::VK_VOLUMEUP) {
 
             // EXPERIMENTAL: TIME MACHINE TEST
 
@@ -1300,9 +1325,16 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, bool CTRL, bool SHIFT) {
             ESPectrum::totalsecondsnodelay = 0;
             VIDEO::framecnt = 0;
 
-            if (ESPectrum::aud_volume>ESP_VOLUME_MIN) {
-                ESPectrum::aud_volume--;
-                pwm_audio_set_volume(ESPectrum::aud_volume);
+            if (KeytoESP == fabgl::VK_F9 || KeytoESP == fabgl::VK_VOLUMEDOWN) {
+                if (ESPectrum::aud_volume>ESP_VOLUME_MIN) {
+                    ESPectrum::aud_volume--;
+                    pwm_audio_set_volume(ESPectrum::aud_volume);
+                }
+            } else {
+                if (ESPectrum::aud_volume<ESP_VOLUME_MAX) {
+                    ESPectrum::aud_volume++;
+                    pwm_audio_set_volume(ESPectrum::aud_volume);
+                }
             }
 
             unsigned short x,y;
@@ -1315,53 +1347,13 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, bool CTRL, bool SHIFT) {
                 y = VIDEO::brdlin_osdstart + 4;
             }
 
-            VIDEO::vga.fillRect(x ,y - 4, 24 * 6, 16, zxColor(1, 0));
+            VIDEO::vga.fillRect(x, y - 4, 24 * OSD_FONT_W, 16, zxColor(1, 0));
             VIDEO::vga.setTextColor(zxColor(7, 0), zxColor(1, 0));
             VIDEO::vga.setFont(Font6x8);
-            VIDEO::vga.setCursor(x + 4,y + 1);
+            VIDEO::vga.setCursor(x + OSD_FONT_W, y + 1);
             VIDEO::vga.print(Config::tape_player ? "TAP" : "VOL");
             for (int i = 0; i < ESPectrum::aud_volume + 16; i++)
-                VIDEO::vga.fillRect(x + 26 + (i * 7) , y + 1, 6, 7, zxColor( 7, 0));
-
-        }
-        else if (KeytoESP == fabgl::VK_F10 || KeytoESP == fabgl::VK_VOLUMEUP) {
-
-            if (VIDEO::OSD == 0) {
-
-                if (Config::aspect_16_9)
-                    VIDEO::Draw_OSD169 = VIDEO::MainScreen_OSD;
-                else
-                    VIDEO::Draw_OSD43  = Z80Ops::isPentagon ? VIDEO::BottomBorder_OSD_Pentagon : VIDEO::BottomBorder_OSD;
-
-                VIDEO::OSD = 0x04;
-
-            } else VIDEO::OSD |= 0x04;
-
-            ESPectrum::totalseconds = 0;
-            ESPectrum::totalsecondsnodelay = 0;
-            VIDEO::framecnt = 0;
-
-            if (ESPectrum::aud_volume<ESP_VOLUME_MAX) {
-                ESPectrum::aud_volume++;
-                pwm_audio_set_volume(ESPectrum::aud_volume);
-            }
-
-            unsigned short x,y;
-            if (Config::aspect_16_9) {
-                x = 156;
-                y = 180;
-            } else {
-                x = 168;
-                y = VIDEO::brdlin_osdstart + 4;
-            }
-
-            VIDEO::vga.fillRect(x ,y - 4, 24 * 6, 16, zxColor(1, 0));
-            VIDEO::vga.setTextColor(zxColor(7, 0), zxColor(1, 0));
-            VIDEO::vga.setFont(Font6x8);
-            VIDEO::vga.setCursor(x + 4,y + 1);
-            VIDEO::vga.print(Config::tape_player ? "TAP" : "VOL");
-            for (int i = 0; i < ESPectrum::aud_volume + 16; i++)
-                VIDEO::vga.fillRect(x + 26 + (i * 7) , y + 1, 6, 7, zxColor( 7, 0));
+                VIDEO::vga.fillRect(x + (i + 7) * OSD_FONT_W, y + 1, OSD_FONT_W - 1, 7, zxColor( 7, 0));
 
         }
         else if (KeytoESP == fabgl::VK_F11) { // Hard reset
@@ -1494,7 +1486,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, bool CTRL, bool SHIFT) {
                                     string statusbar = Config::lang == 0 ? " F2 Rename | F8 Delete" :
                                                        Config::lang == 1 ? " F2 Renombrar | F8 Borrar" :
                                                                            " F2 Renomear | F8 Excluir";
-                                    statusbar += std::string(28 - statusbar.size(), ' ');
+                                    statusbar += std::string(26 - statusbar.size(), ' ');
                                     uint8_t opt2 = menuRun(menuload, statusbar, menuProcessSnapshot);
                                     if (opt2 && FileUtils::isSDReady()) {
                                         if (persistLoad(opt2)) return;
@@ -1515,7 +1507,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, bool CTRL, bool SHIFT) {
                                     string statusbar = Config::lang == 0 ? " F2 Rename | F8 Delete" :
                                                        Config::lang == 1 ? " F2 Renombrar | F8 Borrar" :
                                                                            " F2 Renomear | F8 Excluir";
-                                    statusbar += std::string(28 - statusbar.size(), ' ');
+                                    statusbar += std::string(26 - statusbar.size(), ' ');
                                     uint8_t opt2 = menuRun(menusave, statusbar, menuProcessSnapshotSave);
                                     if (opt2 && FileUtils::isSDReady()) {
                                         if (persistSave(opt2)) return;
@@ -3235,7 +3227,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, bool CTRL, bool SHIFT) {
                             osdRow  = 0;
                             msgChar = 0;
                             msgIndex++;
-                            if (msgIndex==9) msgIndex = 0;
+                            if (msgIndex==11) msgIndex = 0;
                         }
                     }
 
